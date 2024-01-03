@@ -17,28 +17,6 @@ const secret = 'asdfe45we45w345wegw345werjktjwertkj';
 const front_url = `http://localhost:3000`;
 const port = process.env.PORT || 4000; // Use the environment variable PORT if available, otherwise default to 4000
 
-
-
-
-// const { auth } = require('express-openid-connect');
-// const config = {
-//   authRequired: false,
-//   auth0Logout: true,
-//   secret: 'a long, randomly-generated string stored in env',
-//   baseURL: 'http://localhost:3000',
-//   clientID: 'oablV5I5402kVVqDeCw6pXmay9ruk5Va',
-//   issuerBaseURL: 'https://dev-u3howq02oodedw0j.us.auth0.com'
-// };
-
-// // auth router attaches /login, /logout, and /callback routes to the baseURL
-// app.use(auth(config));
-
-// // req.isAuthenticated is provided from the auth router
-// app.get('/', (req, res) => {
-//   res.send(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
-// });
-
-
 app.use(cors({credentials:true,origin:`${front_url}`}));
 app.use(express.json());
 app.use(cookieParser());
@@ -47,12 +25,28 @@ app.use('/uploads', express.static(__dirname + '/uploads'));
 mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 // mongoose.connect('mongodb+srv://van:gan@cluster0.5te6pp7.mongodb.net/?retryWrites=true&w=majority');
 
+async function handleAuthenticationErrors(err, req, res, next) {
+  try {
+    if (err.name === 'UnauthorizedError') {
+      res.status(401).json({ error: 'Unauthorized: Invalid username or password' });
+    } else {
+      next(err);
+    }
+  } catch (error) {
+    console.error('Error in handleAuthenticationErrors:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
+
+app.use(handleAuthenticationErrors);
 
 const likeSchema = new mongoose.Schema({
     postId: String,
     userId: String,
     isLiked: Boolean,
 });
+
+
 
 const Like = mongoose.model('Like', likeSchema);
 
@@ -86,46 +80,118 @@ app.get('/api/like', async (req, res) => {
     res.json({ isLiked: !!like, likesCount });
 });
 
+app.post('/register', async (req, res) => {
+  const { username, password, writer } = req.body;
 
-app.post('/register', async (req,res) => {
-  const {username,password} = req.body;
-  try{
+  try {
     const userDoc = await User.create({
       username,
-      password:bcrypt.hashSync(password,salt),
+      password: bcrypt.hashSync(password, salt),
+      writer:0,
     });
     res.json(userDoc);
-  } catch(e) {
-    console.log(e);
-    res.status(400).json(e);
+  } catch (error) {
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.username === 1) {
+      // Duplicate username error
+      return res.status(400).json({ error: 'Username is already taken' });
+    }
+
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.post('/login', async (req,res) => {
-  const {username,password} = req.body;
-  const userDoc = await User.findOne({username});
-  const passOk = bcrypt.compareSync(password, userDoc.password);
-  if (passOk) {
-    // logged in
-    jwt.sign({username,id:userDoc._id}, secret, {}, (err,token) => {
-      if (err) throw err;
-      res.cookie('token', token).json({
-        id:userDoc._id,
-        username,
-      });
-    });
-  } else {
-    res.status(400).json('wrong credentials');
-  }
-});
 
-app.get('/profile', (req,res) => {
-  const {token} = req.cookies;
-  jwt.verify(token, secret, {}, (err,info) => {
-    if (err) throw err;
-    res.json(info);
+// Add this to your backend code
+app.post('/join-as-writer', (req, res) => {
+  const { token } = req.cookies;
+  
+  jwt.verify(token, secret, {}, async (err, decodedToken) => {
+    if (err) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { id: userId } = decodedToken;
+
+    try {
+      // Assuming you have a User model
+      const user = await User.findById(userId);
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Update the user's writer status
+      user.writer = 1;
+      await user.save();
+
+      res.status(200).json({ message: 'Successfully joined as a writer' });
+    } catch (error) {
+      console.error('Error joining as a writer:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   });
 });
+
+
+app.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const userDoc = await User.findOne({ username });
+
+    if (!userDoc) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const passOk = bcrypt.compareSync(password, userDoc.password);
+
+    if (passOk) {
+      // Include 'writer' in the payload
+      const payload = { username, id: userDoc._id, writer: userDoc.writer };
+
+      // logged in
+      jwt.sign(payload, secret, {}, (err, token) => {
+        if (err) throw err;
+        res.cookie('token', token).json({
+          id: userDoc._id,
+          username,
+          writer: userDoc.writer, // Include 'writer' in the response
+        });
+      });
+    } else {
+      res.status(400).json({ error: 'Wrong credentials' });
+    }
+  } catch (error) {
+    console.error('An error occurred during login:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+app.get('/profile', (req, res) => {
+  const { token } = req.cookies;
+
+  jwt.verify(token, secret, {}, (err, info) => {
+    if (err) {
+      if (err.name === 'TokenExpiredError') {
+        // Handle expired token, possibly ask the user to log in again
+        return res.status(401).json({ error: 'Token has expired' });
+      } else {
+        // Other token verification errors
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+    }
+
+    const userProfile = {
+      username: info.username,
+      id: info._id,
+      writer: info.writer,
+    };
+
+    res.json(userProfile);
+  });
+});
+
 
 app.post('/logout', (req,res) => {
   res.cookie('token', '').json('ok');
@@ -186,15 +252,6 @@ app.post('/comments', async (req, res) => {
 
 module.exports = app;
 
-// app.get('/comment', async (req,res) => {
-//   res.json(
-//     await Comment.find()
-//       .populate('author', ['username'])
-//       .sort({createdAt: -1})
-//       .limit(20)
-//   );
-// });
-
 app.get('/comment', async (req, res) => {
   const { postId } = req.query;
 
@@ -242,13 +299,6 @@ app.put('/post',uploadMiddleware.single('file'), async (req,res) => {
     }
         await postDoc.save();
 
-    // await postDoc.update({
-    //   title,
-    //   summary,
-    //   content,
-    //   cover: newPath ? newPath : postDoc.cover,
-    // });
-
     res.json(postDoc);
   });
 
@@ -268,18 +318,6 @@ app.get('/post/:id', async (req, res) => {
   const postDoc = await Post.findById(id).populate('author', ['username']);
   res.json(postDoc);
 })
-
-// app.get('/comment/:id', async (req, res) => {
-//   const { id } = req.params;
-//     res.json(
-//     await Comment.findBypostId(id)
-//       .populate('author', ['username'])
-//       .sort({createdAt: -1})
-//       .limit(20)
-//   );
-//   // const postDoc = await Post.findById(id).populate('author', ['username']);
-//   // res.json(postDoc);
-// })
 
 app.listen(port);
 //

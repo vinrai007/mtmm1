@@ -1,8 +1,9 @@
 {
-    "scripts":{
+  "scripts":{
     "start":"node index.js",
     "build": "npm install "
-   },
+},
+
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "browserify-zlib": "^0.2.0",
