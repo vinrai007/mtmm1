@@ -4,6 +4,7 @@
     "build": "npm install "
   },
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
