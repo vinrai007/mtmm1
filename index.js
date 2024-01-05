@@ -197,27 +197,26 @@ app.post('/join-as-writer', (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const userDoc = await User.findOne({ username });
+    const user = users.find(u => u.username === username);
 
-    if (!userDoc) {
+    if (!user) {
       return res.status(400).json({ error: 'User not found' });
     }
 
-    const passOk = bcrypt.compareSync(password, userDoc.password);
+    const passOk = await bcrypt.compare(password, user.password);
 
     if (passOk) {
       // Include 'writer' in the payload
-      const payload = { username, id: userDoc._id, writer: userDoc.writer };
+      const payload = { username, id: user.id, writer: user.writer };
 
-      // Create a token with expiration time and set it as an HTTP-only cookie
-      jwt.sign(payload, secret, { expiresIn: '1h' }, (err, token) => {
+      // Logged in
+      jwt.sign(payload, secret, {}, (err, token) => {
         if (err) throw err;
-
-        // Set the token as an HTTP-only cookie
         res.cookie('token', token, { httpOnly: true }).json({
-          id: userDoc._id,
+          id: user.id,
           username,
-          writer: userDoc.writer, // Include 'writer' in the response
+          writer: user.writer, // Include 'writer' in the response
+          token, // Include the token in the response
         });
       });
     } else {
@@ -229,17 +228,17 @@ app.post('/login', async (req, res) => {
   }
 });
 
-app.get('/profile', (req, res) => {
-  const { token } = req.cookies;
+app.post('/verifyToken', (req, res) => {
+  const { token } = req.headers;
 
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  jwt.verify(token, secret, {}, (err, info) => {
+  jwt.verify(token, secret, (err, info) => {
     if (err) {
       if (err.name === 'TokenExpiredError') {
-        // Handle expired token, possibly ask the user to log in again
+        // Handle expired token
         return res.status(401).json({ error: 'Token has expired' });
       } else {
         // Other token verification errors
