@@ -17,6 +17,8 @@ const secret = 'asdfe45we45w345wegw345werjktjwertkj';
 const front_url = `http://localhost:3000`;
 // const front_url = `https://lustrous-bubblegum-923c1e.netlify.app`;
 const port = process.env.PORT || 4000; // Use the environment variable PORT if available, otherwise default to 4000
+const session = require('express-session');
+
 
 app.use(cors({credentials:true,origin:`${front_url}`}));
 app.use(express.json());
@@ -81,6 +83,27 @@ app.get('/api/like', async (req, res) => {
     res.json({ isLiked: !!like, likesCount });
 });
 
+// app.post('/register', async (req, res) => {
+//   const { username, password, writer } = req.body;
+
+//   try {
+//     const userDoc = await User.create({
+//       username,
+//       password: bcrypt.hashSync(password, salt),
+//       writer:0,
+//     });
+//     res.json(userDoc);
+//   } catch (error) {
+//     if (error.code === 11000 && error.keyPattern && error.keyPattern.username === 1) {
+//       // Duplicate username error
+//       return res.status(400).json({ error: 'Username is already taken' });
+//     }
+
+//     console.error(error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// });
+
 app.post('/register', async (req, res) => {
   const { username, password, writer } = req.body;
 
@@ -88,9 +111,20 @@ app.post('/register', async (req, res) => {
     const userDoc = await User.create({
       username,
       password: bcrypt.hashSync(password, salt),
-      writer:0,
+      writer: 0,
     });
-    res.json(userDoc);
+
+    // Set session data after successful registration
+    req.session.user = {
+      id: userDoc._id,
+      username: userDoc.username,
+      writer: userDoc.writer,
+    };
+
+    res.json({
+      id: userDoc._id,
+      username: userDoc.username,
+    });
   } catch (error) {
     if (error.code === 11000 && error.keyPattern && error.keyPattern.username === 1) {
       // Duplicate username error
@@ -101,6 +135,7 @@ app.post('/register', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 
 // Add this to your backend code
@@ -135,29 +170,85 @@ app.post('/join-as-writer', (req, res) => {
 });
 
 
+// app.post('/login', async (req, res) => {
+//   try {
+//     const { username, password } = req.body;
+//     const userDoc = await User.findOne({ username });
+
+//     if (!userDoc) {
+//       return res.status(400).json({ error: 'User not found' });
+//     }
+
+//     const passOk = bcrypt.compareSync(password, userDoc.password);
+
+//     if (passOk) {
+//       // Include 'writer' in the payload
+//       const payload = { username, id: userDoc._id, writer: userDoc.writer };
+
+//       // logged in
+//       jwt.sign(payload, secret, {}, (err, token) => {
+//         if (err) throw err;
+//         res.cookie('token', token).json({
+//           id: userDoc._id,
+//           username,
+//           writer: userDoc.writer, // Include 'writer' in the response
+//         });
+//       });
+//     } else {
+//       res.status(400).json({ error: 'Wrong credentials' });
+//     }
+//   } catch (error) {
+//     console.error('An error occurred during login:', error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// });
+
+
+// app.get('/profile', (req, res) => {
+//   const { token } = req.cookies;
+
+//   jwt.verify(token, secret, {}, (err, info) => {
+//     if (err) {
+//       if (err.name === 'TokenExpiredError') {
+//         // Handle expired token, possibly ask the user to log in again
+//         return res.status(401).json({ error: 'Token has expired' });
+//       } else {
+//         // Other token verification errors
+//         return res.status(401).json({ error: 'Unauthorized' });
+//       }
+//     }
+
+//     const userProfile = {
+//       username: info.username,
+//       id: info._id,
+//       writer: info.writer,
+//     };
+
+//     res.json(userProfile);
+//   });
+// });
+
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const userDoc = await User.findOne({ username });
+    const user = users.find(u => u.username === username);
 
-    if (!userDoc) {
+    if (!user) {
       return res.status(400).json({ error: 'User not found' });
     }
 
-    const passOk = bcrypt.compareSync(password, userDoc.password);
+    const passOk = await bcrypt.compare(password, user.password);
 
     if (passOk) {
-      // Include 'writer' in the payload
-      const payload = { username, id: userDoc._id, writer: userDoc.writer };
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        writer: user.writer,
+      };
 
-      // logged in
-      jwt.sign(payload, secret, {}, (err, token) => {
-        if (err) throw err;
-        res.cookie('token', token).json({
-          id: userDoc._id,
-          username,
-          writer: userDoc.writer, // Include 'writer' in the response
-        });
+      res.json({
+        id: user.id,
+        username: user.username,
       });
     } else {
       res.status(400).json({ error: 'Wrong credentials' });
@@ -168,32 +259,31 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
 app.get('/profile', (req, res) => {
-  const { token } = req.cookies;
+  const { user } = req.session;
 
-  jwt.verify(token, secret, {}, (err, info) => {
-    if (err) {
-      if (err.name === 'TokenExpiredError') {
-        // Handle expired token, possibly ask the user to log in again
-        return res.status(401).json({ error: 'Token has expired' });
-      } else {
-        // Other token verification errors
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-    }
-
-    const userProfile = {
-      username: info.username,
-      id: info._id,
-      writer: info.writer,
-    };
-
-    res.json(userProfile);
-  });
+  if (user) {
+    res.json({
+      id: user.id,
+      username: user.username,
+      writer: user.writer,
+    });
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
 });
 
-
+app.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    } else {
+      res.clearCookie('connect.sid');
+      res.json({ message: 'Logged out successfully' });
+    }
+  });
+});
 
 // app.get('/profile', async (req, res) => {
 //   const { token } = req.cookies;
@@ -227,9 +317,9 @@ app.get('/profile', (req, res) => {
 
 
 
-app.post('/logout', (req,res) => {
-  res.cookie('token', '').json('ok');
-});
+// app.post('/logout', (req,res) => {
+//   res.cookie('token', '').json('ok');
+// });
 
 // app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
 //   const {originalname,path} = req.file;
