@@ -169,29 +169,60 @@ app.post('/login', async (req, res) => {
 });
 
 
-app.get('/profile', (req, res) => {
+// app.get('/profile', (req, res) => {
+//   const { token } = req.cookies;
+
+//   jwt.verify(token, secret, {}, (err, info) => {
+//     if (err) {
+//       if (err.name === 'TokenExpiredError') {
+//         // Handle expired token, possibly ask the user to log in again
+//         return res.status(401).json({ error: 'Token has expired' });
+//       } else {
+//         // Other token verification errors
+//         return res.status(401).json({ error: 'Unauthorized' });
+//       }
+//     }
+
+//     const userProfile = {
+//       username: info.username,
+//       id: info._id,
+//       writer: info.writer,
+//     };
+
+//     res.json(userProfile);
+//   });
+// });
+
+app.get('/profile', async (req, res) => {
   const { token } = req.cookies;
 
-  jwt.verify(token, secret, {}, (err, info) => {
-    if (err) {
-      if (err.name === 'TokenExpiredError') {
-        // Handle expired token, possibly ask the user to log in again
-        return res.status(401).json({ error: 'Token has expired' });
-      } else {
-        // Other token verification errors
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
+  try {
+    // Verify the token and get user information
+    const decodedToken = jwt.verify(token, secret);
+
+    // Find the user document using the decoded user ID
+    const userDoc = await User.findById(decodedToken.id);
+
+    if (!userDoc) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     const userProfile = {
-      username: info.username,
-      id: info._id,
-      writer: info.writer,
+      username: userDoc.username,
+      id: userDoc._id,
+      writer: userDoc.writer,
     };
 
     res.json(userProfile);
-  });
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token has expired' });
+    } else {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
 });
+
 
 
 app.post('/logout', (req,res) => {
