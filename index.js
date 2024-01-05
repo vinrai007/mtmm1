@@ -229,28 +229,62 @@ app.post('/logout', (req,res) => {
   res.cookie('token', '').json('ok');
 });
 
-app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
-  const {originalname,path} = req.file;
+// app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
+//   const {originalname,path} = req.file;
+//   const parts = originalname.split('.');
+//   const ext = parts[parts.length - 1];
+//   const newPath = path+'.'+ext;
+//   fs.renameSync(path, newPath);
+
+//   const {token} = req.cookies;
+//   jwt.verify(token, secret, {}, async (err,info) => {
+//     if (err) throw err;
+//     const {title,summary,content} = req.body;
+//     const postDoc = await Post.create({
+//       title,
+//       summary,
+//       content,
+//       cover:newPath,
+//       author:info.id,
+//     });
+//     res.json(postDoc);
+//   });
+// });
+
+app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
+  const { originalname, path } = req.file;
   const parts = originalname.split('.');
   const ext = parts[parts.length - 1];
-  const newPath = path+'.'+ext;
+  const newPath = path + '.' + ext;
   fs.renameSync(path, newPath);
 
-  const {token} = req.cookies;
-  jwt.verify(token, secret, {}, async (err,info) => {
-    if (err) throw err;
-    const {title,summary,content} = req.body;
+  // Temporarily removing jwt.verify for demonstration purposes
+  // const { token } = req.cookies;
+  // jwt.verify(token, secret, {}, async (err, info) => {
+  //   if (err) throw err;
+  
+  try {
+    const { title, summary, content } = req.body;
+    
+    // Temporarily hardcoding author ID, replace this with actual user authentication
+    const authorId = 'some_user_id';
+
     const postDoc = await Post.create({
       title,
       summary,
       content,
-      cover:newPath,
-      author:info.id,
+      cover: newPath,
+      author: authorId,
     });
-    res.json(postDoc);
-  });
 
+    res.json(postDoc);
+  } catch (error) {
+    console.error('An error occurred during post creation:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+  // });
 });
+
 
 // for comment
 app.post('/comments', async (req, res) => {
