@@ -16,7 +16,9 @@ const commentSchema = new mongoose.Schema({
     type: String, // Assuming postId is a Number, adjust as needed
     required: true,
   },
-    author:{type:Schema.Types.ObjectId, ref:'User'},
+  authorId : String,
+  author: String,
+    // author:{type:Schema.Types.ObjectId, ref:'User'},
 }, {
   timestamps: true,
 });

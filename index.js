@@ -288,36 +288,68 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
 
 
 // for comment
+// app.post('/comments', async (req, res) => {
+//   const { text, postId } = req.body;
+//   // res.cookie('token', '').json('ok');
+//     const {token} = req.cookies;
+//     jwt.verify(token, secret, {}, async (err,info) => {
+
+//   try {
+//       // const {token} = req.cookies;
+//   // jwt.verify(token, secret, {}, async (err,info) => {
+//     if (err) throw err;
+//     if (text.trim() !== "") {
+//       const newComment = await Comment.create({
+//         id: Date.now(),
+//         text: text,
+//         postId: postId, // Associate the comment with a specific post
+//         author:info.id,
+//       });
+
+//       res.json(newComment);
+//     } else {
+//       res.status(400).json({ error: 'Comment text cannot be empty.' });
+//     }
+//    } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//    }
+//   });
+// });
+
+// module.exports = app;
+
 app.post('/comments', async (req, res) => {
-  const { text, postId } = req.body;
-  // res.cookie('token', '').json('ok');
-    const {token} = req.cookies;
-    jwt.verify(token, secret, {}, async (err,info) => {
+  const { text, postId , userId, username} = req.body;
+
+  // Temporarily removing jwt.verify for demonstration purposes
+  // const {token} = req.cookies;
+  // jwt.verify(token, secret, {}, async (err, info) => {
 
   try {
-      // const {token} = req.cookies;
-  // jwt.verify(token, secret, {}, async (err,info) => {
-    if (err) throw err;
+    // Temporarily hardcoding author ID, replace this with actual user authentication
+    const authorId = 'some_user_id';
+
     if (text.trim() !== "") {
       const newComment = await Comment.create({
         id: Date.now(),
         text: text,
         postId: postId, // Associate the comment with a specific post
-        author:info.id,
+        authorId: userId,
+        author: username,
       });
 
       res.json(newComment);
     } else {
       res.status(400).json({ error: 'Comment text cannot be empty.' });
     }
-   } catch (error) {
+  } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
-   }
-  });
+  }
+  // });
 });
 
-module.exports = app;
 
 app.get('/comment', async (req, res) => {
   const { postId } = req.query;
