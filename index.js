@@ -338,37 +338,86 @@ app.get('/comment', async (req, res) => {
 });
 
 
-app.put('/post',uploadMiddleware.single('file'), async (req,res) => {
+// app.put('/post',uploadMiddleware.single('file'), async (req,res) => {
+//   let newPath = null;
+//   if (req.file) {
+//     const {originalname,path} = req.file;
+//     const parts = originalname.split('.');
+//     const ext = parts[parts.length - 1];
+//     newPath = path+'.'+ext;
+//     fs.renameSync(path, newPath);
+//   }
+
+//   const {token} = req.cookies;
+//   jwt.verify(token, secret, {}, async (err,info) => {
+//     if (err) throw err;
+//     const {id,title,summary,content} = req.body;
+//     const postDoc = await Post.findById(id);
+//     const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
+//     if (!isAuthor) {
+//       return res.status(400).json('you are not the author');
+//     }
+//     postDoc.title = title;
+//     postDoc.summary = summary;
+//     postDoc.content = content;
+//     if (newPath) {
+//       postDoc.cover = newPath;
+//     }
+//         await postDoc.save();
+
+//     res.json(postDoc);
+//   });
+// });
+
+
+app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
   let newPath = null;
+
   if (req.file) {
-    const {originalname,path} = req.file;
+    const { originalname, path } = req.file;
     const parts = originalname.split('.');
     const ext = parts[parts.length - 1];
-    newPath = path+'.'+ext;
+    newPath = path + '.' + ext;
     fs.renameSync(path, newPath);
   }
 
-  const {token} = req.cookies;
-  jwt.verify(token, secret, {}, async (err,info) => {
-    if (err) throw err;
-    const {id,title,summary,content} = req.body;
+  // Temporarily removing jwt.verify for demonstration purposes
+  // const { token } = req.cookies;
+  // jwt.verify(token, secret, {}, async (err, info) => {
+  //   if (err) throw err;
+
+  try {
+    const { id, title, summary, content } = req.body;
+    
+    // Temporarily hardcoding author ID, replace this with actual user authentication
+    const authorId = 'some_user_id';
+
     const postDoc = await Post.findById(id);
-    const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
-    if (!isAuthor) {
-      return res.status(400).json('you are not the author');
-    }
+
+    // Temporarily removing author verification for demonstration purposes
+    // const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
+    // if (!isAuthor) {
+    //   return res.status(400).json('you are not the author');
+    // }
+
     postDoc.title = title;
     postDoc.summary = summary;
     postDoc.content = content;
+
     if (newPath) {
       postDoc.cover = newPath;
     }
-        await postDoc.save();
+
+    await postDoc.save();
 
     res.json(postDoc);
-  });
-
+  } catch (error) {
+    console.error('An error occurred during post update:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+  // });
 });
+
 
 app.get('/post', async (req,res) => {
   res.json(
