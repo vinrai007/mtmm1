@@ -18,7 +18,16 @@ const front_url = `http://localhost:3000`;
 // const front_url = `https://lustrous-bubblegum-923c1e.netlify.app`;
 const port = process.env.PORT || 4000; // Use the environment variable PORT if available, otherwise default to 4000
 const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);
 
+app.use(
+  session({
+    secret: 'asdfe45we45w345wegw345werjktjwertkj',
+    resave: false,
+    saveUninitialized: false,
+    store: new MongoStore({ mongooseConnection: mongoose.connection }),
+  })
+);
 
 app.use(cors({credentials:true,origin:`${front_url}`}));
 app.use(express.json());
@@ -104,37 +113,7 @@ app.get('/api/like', async (req, res) => {
 //   }
 // });
 
-app.post('/register', async (req, res) => {
-  const { username, password, writer } = req.body;
 
-  try {
-    const userDoc = await User.create({
-      username,
-      password: bcrypt.hashSync(password, salt),
-      writer: 0,
-    });
-
-    // Set session data after successful registration
-    req.session.user = {
-      id: userDoc._id,
-      username: userDoc.username,
-      writer: userDoc.writer,
-    };
-
-    res.json({
-      id: userDoc._id,
-      username: userDoc.username,
-    });
-  } catch (error) {
-    if (error.code === 11000 && error.keyPattern && error.keyPattern.username === 1) {
-      // Duplicate username error
-      return res.status(400).json({ error: 'Username is already taken' });
-    }
-
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
 
 
 
@@ -169,6 +148,26 @@ app.post('/join-as-writer', (req, res) => {
   });
 });
 
+// app.post('/register', async (req, res) => {
+//   const { username, password, writer } = req.body;
+
+//   try {
+//     const userDoc = await User.create({
+//       username,
+//       password: bcrypt.hashSync(password, salt),
+//       writer:0,
+//     });
+//     res.json(userDoc);
+//   } catch (error) {
+//     if (error.code === 11000 && error.keyPattern && error.keyPattern.username === 1) {
+//       // Duplicate username error
+//       return res.status(400).json({ error: 'Username is already taken' });
+//     }
+
+//     console.error(error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// });
 
 // app.post('/login', async (req, res) => {
 //   try {
@@ -228,27 +227,50 @@ app.post('/join-as-writer', (req, res) => {
 //   });
 // });
 
+app.post('/register', async (req, res) => {
+  const { username, password, writer } = req.body;
+
+  try {
+    const userDoc = await User.create({
+      username,
+      password: bcrypt.hashSync(password, salt),
+      writer: 0,
+    });
+    res.json(userDoc);
+  } catch (error) {
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.username === 1) {
+      // Duplicate username error
+      return res.status(400).json({ error: 'Username is already taken' });
+    }
+
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const user = users.find(u => u.username === username);
+    const userDoc = await User.findOne({ username });
 
-    if (!user) {
+    if (!userDoc) {
       return res.status(400).json({ error: 'User not found' });
     }
 
-    const passOk = await bcrypt.compare(password, user.password);
+    const passOk = bcrypt.compareSync(password, userDoc.password);
 
     if (passOk) {
+      // Store user session on the server
       req.session.user = {
-        id: user.id,
-        username: user.username,
-        writer: user.writer,
+        id: userDoc._id,
+        username,
+        writer: userDoc.writer,
       };
 
       res.json({
-        id: user.id,
-        username: user.username,
+        id: userDoc._id,
+        username,
+        writer: userDoc.writer,
       });
     } else {
       res.status(400).json({ error: 'Wrong credentials' });
@@ -262,28 +284,19 @@ app.post('/login', async (req, res) => {
 app.get('/profile', (req, res) => {
   const { user } = req.session;
 
-  if (user) {
-    res.json({
-      id: user.id,
-      username: user.username,
-      writer: user.writer,
-    });
-  } else {
-    res.status(401).json({ error: 'Unauthorized' });
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
+
+  const userProfile = {
+    username: user.username,
+    id: user.id,
+    writer: user.writer,
+  };
+
+  res.json(userProfile);
 });
 
-app.post('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      console.error('Error destroying session:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
-    } else {
-      res.clearCookie('connect.sid');
-      res.json({ message: 'Logged out successfully' });
-    }
-  });
-});
 
 // app.get('/profile', async (req, res) => {
 //   const { token } = req.cookies;
