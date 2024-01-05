@@ -209,9 +209,11 @@ app.post('/login', async (req, res) => {
       // Include 'writer' in the payload
       const payload = { username, id: userDoc._id, writer: userDoc.writer };
 
-      // logged in
+      // Create a token with expiration time and set it as an HTTP-only cookie
       jwt.sign(payload, secret, { expiresIn: '1h' }, (err, token) => {
         if (err) throw err;
+
+        // Set the token as an HTTP-only cookie
         res.cookie('token', token, { httpOnly: true }).json({
           id: userDoc._id,
           username,
@@ -247,14 +249,13 @@ app.get('/profile', (req, res) => {
 
     const userProfile = {
       username: info.username,
-      id: info.id, // Change from info._id to info.id
+      id: info.id,
       writer: info.writer,
     };
 
     res.json(userProfile);
   });
 });
-
 
 // app.get('/profile', async (req, res) => {
 //   const { token } = req.cookies;
