@@ -267,7 +267,7 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
     const { title, summary, content, userId } = req.body;
     
     // Temporarily hardcoding author ID, replace this with actual user authentication
-    const authorId = 'some_user_id';
+    // const authorId = 'some_user_id';
 
     const postDoc = await Post.create({
       title,
