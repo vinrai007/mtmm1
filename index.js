@@ -135,38 +135,38 @@ app.post('/join-as-writer', (req, res) => {
 });
 
 
-app.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    const userDoc = await User.findOne({ username });
+// app.post('/login', async (req, res) => {
+//   try {
+//     const { username, password } = req.body;
+//     const userDoc = await User.findOne({ username });
 
-    if (!userDoc) {
-      return res.status(400).json({ error: 'User not found' });
-    }
+//     if (!userDoc) {
+//       return res.status(400).json({ error: 'User not found' });
+//     }
 
-    const passOk = bcrypt.compareSync(password, userDoc.password);
+//     const passOk = bcrypt.compareSync(password, userDoc.password);
 
-    if (passOk) {
-      // Include 'writer' in the payload
-      const payload = { username, id: userDoc._id, writer: userDoc.writer };
+//     if (passOk) {
+//       // Include 'writer' in the payload
+//       const payload = { username, id: userDoc._id, writer: userDoc.writer };
 
-      // logged in
-      jwt.sign(payload, secret, {}, (err, token) => {
-        if (err) throw err;
-        res.cookie('token', token).json({
-          id: userDoc._id,
-          username,
-          writer: userDoc.writer, // Include 'writer' in the response
-        });
-      });
-    } else {
-      res.status(400).json({ error: 'Wrong credentials' });
-    }
-  } catch (error) {
-    console.error('An error occurred during login:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
+//       // logged in
+//       jwt.sign(payload, secret, {}, (err, token) => {
+//         if (err) throw err;
+//         res.cookie('token', token).json({
+//           id: userDoc._id,
+//           username,
+//           writer: userDoc.writer, // Include 'writer' in the response
+//         });
+//       });
+//     } else {
+//       res.status(400).json({ error: 'Wrong credentials' });
+//     }
+//   } catch (error) {
+//     console.error('An error occurred during login:', error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// });
 
 
 // app.get('/profile', (req, res) => {
@@ -193,35 +193,98 @@ app.post('/login', async (req, res) => {
 //   });
 // });
 
-app.get('/profile', async (req, res) => {
-  const { token } = req.cookies;
 
+app.post('/login', async (req, res) => {
   try {
-    // Verify the token and get user information
-    const decodedToken = jwt.verify(token, secret);
-
-    // Find the user document using the decoded user ID
-    const userDoc = await User.findById(decodedToken.id);
+    const { username, password } = req.body;
+    const userDoc = await User.findOne({ username });
 
     if (!userDoc) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const passOk = bcrypt.compareSync(password, userDoc.password);
+
+    if (passOk) {
+      // Include 'writer' in the payload
+      const payload = { username, id: userDoc._id, writer: userDoc.writer };
+
+      // logged in
+      jwt.sign(payload, secret, { expiresIn: '1h' }, (err, token) => {
+        if (err) throw err;
+        res.cookie('token', token, { httpOnly: true }).json({
+          id: userDoc._id,
+          username,
+          writer: userDoc.writer, // Include 'writer' in the response
+        });
+      });
+    } else {
+      res.status(400).json({ error: 'Wrong credentials' });
+    }
+  } catch (error) {
+    console.error('An error occurred during login:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.get('/profile', (req, res) => {
+  const { token } = req.cookies;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  jwt.verify(token, secret, {}, (err, info) => {
+    if (err) {
+      if (err.name === 'TokenExpiredError') {
+        // Handle expired token, possibly ask the user to log in again
+        return res.status(401).json({ error: 'Token has expired' });
+      } else {
+        // Other token verification errors
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
     }
 
     const userProfile = {
-      username: userDoc.username,
-      id: userDoc._id,
-      writer: userDoc.writer,
+      username: info.username,
+      id: info.id, // Change from info._id to info.id
+      writer: info.writer,
     };
 
     res.json(userProfile);
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token has expired' });
-    } else {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-  }
+  });
 });
+
+
+// app.get('/profile', async (req, res) => {
+//   const { token } = req.cookies;
+
+//   try {
+//     // Verify the token and get user information
+//     const decodedToken = jwt.verify(token, secret);
+
+//     // Find the user document using the decoded user ID
+//     const userDoc = await User.findById(decodedToken.id);
+
+//     if (!userDoc) {
+//       return res.status(404).json({ error: 'User not found' });
+//     }
+
+//     const userProfile = {
+//       username: userDoc.username,
+//       id: userDoc._id,
+//       writer: userDoc.writer,
+//     };
+
+//     res.json(userProfile);
+//   } catch (error) {
+//     if (error.name === 'TokenExpiredError') {
+//       return res.status(401).json({ error: 'Token has expired' });
+//     } else {
+//       return res.status(401).json({ error: 'Unauthorized' });
+//     }
+//   }
+// });
 
 
 
