@@ -264,7 +264,7 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
   //   if (err) throw err;
   
   try {
-    const { title, summary, content, username} = req.body;
+    const { title, summary, content, userId, username} = req.body;
     // const {userId } = req;
     // Temporarily hardcoding author ID, replace this with actual user authentication
     // const authorId = 'some_user_id';
@@ -274,6 +274,7 @@ app.post('/post', uploadMiddleware.single('file'), async (req, res) => {
       summary,
       content,
       cover: newPath,
+      authorId: userId,
       author: username,
     });
 
