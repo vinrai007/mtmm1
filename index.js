@@ -248,54 +248,95 @@ app.post('/register', async (req, res) => {
   }
 });
 
-app.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    const userDoc = await User.findOne({ username });
+const isAuthenticated = (req, res, next) => {
+  if (req.session.user) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+};
 
-    if (!userDoc) {
-      return res.status(400).json({ error: 'User not found' });
-    }
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
 
-    const passOk = bcrypt.compareSync(password, userDoc.password);
+  // Simple validation (replace with more robust validation)
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Please provide both username and password.' });
+  }
 
-    if (passOk) {
-      // Store user session on the server
-      req.session.user = {
-        id: userDoc._id,
-        username,
-        writer: userDoc.writer,
-      };
+  // Find user in the sample data (replace with your database logic)
+  const user = users.find(u => u.username === username && u.password === password);
 
-      res.json({
-        id: userDoc._id,
-        username,
-        writer: userDoc.writer,
-      });
-    } else {
-      res.status(400).json({ error: 'Wrong credentials' });
-    }
-  } catch (error) {
-    console.error('An error occurred during login:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+  if (user) {
+    // Set user information in the session
+    req.session.user = { id: user.id, username: user.username };
+
+    // Successful login
+    res.json({ id: user.id, username: user.username });
+  } else {
+    // Failed login
+    res.status(401).json({ error: 'Wrong credentials. Please try again.' });
   }
 });
 
-app.get('/profile', (req, res) => {
-  const { user } = req.session;
+app.get('/user', isAuthenticated, (req, res) => {
+  // Get user information from the session
+  const user = req.session.user;
 
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (user) {
+    res.json(user);
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
   }
-
-  const userProfile = {
-    username: user.username,
-    id: user.id,
-    writer: user.writer,
-  };
-
-  res.json(userProfile);
 });
+// app.post('/login', async (req, res) => {
+//   try {
+//     const { username, password } = req.body;
+//     const userDoc = await User.findOne({ username });
+
+//     if (!userDoc) {
+//       return res.status(400).json({ error: 'User not found' });
+//     }
+
+//     const passOk = bcrypt.compareSync(password, userDoc.password);
+
+//     if (passOk) {
+//       // Store user session on the server
+//       req.session.user = {
+//         id: userDoc._id,
+//         username,
+//         writer: userDoc.writer,
+//       };
+
+//       res.json({
+//         id: userDoc._id,
+//         username,
+//         writer: userDoc.writer,
+//       });
+//     } else {
+//       res.status(400).json({ error: 'Wrong credentials' });
+//     }
+//   } catch (error) {
+//     console.error('An error occurred during login:', error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// });
+
+// app.get('/profile', (req, res) => {
+//   const { user } = req.session;
+
+//   if (!user) {
+//     return res.status(401).json({ error: 'Unauthorized' });
+//   }
+
+//   const userProfile = {
+//     username: user.username,
+//     id: user.id,
+//     writer: user.writer,
+//   };
+
+//   res.json(userProfile);
+// });
 
 
 // app.get('/profile', async (req, res) => {
