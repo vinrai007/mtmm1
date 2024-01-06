@@ -256,7 +256,7 @@ const isAuthenticated = (req, res, next) => {
   }
 };
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   // Simple validation (replace with more robust validation)
@@ -265,14 +265,15 @@ app.post('/login', (req, res) => {
   }
 
   // Find user in the sample data (replace with your database logic)
-  const user = users.find(u => u.username === username && u.password === password);
-
-  if (user) {
+  const userDoc = await User.findOne({ username });
+  const passOk = bcrypt.compareSync(password, userDoc.password);
+  
+  if (passOk) {
     // Set user information in the session
-    req.session.user = { id: user.id, username: user.username };
+    req.session.userDoc = { id: userDoc._id, username: username };
 
     // Successful login
-    res.json({ id: user.id, username: user.username });
+    res.json({ id: userDoc._id, username: username, writer: userDoc.writer });
   } else {
     // Failed login
     res.status(401).json({ error: 'Wrong credentials. Please try again.' });
@@ -281,10 +282,10 @@ app.post('/login', (req, res) => {
 
 app.get('/user', isAuthenticated, (req, res) => {
   // Get user information from the session
-  const user = req.session.user;
+  const userDoc = req.session.userDoc;
 
-  if (user) {
-    res.json(user);
+  if (userDoc) {
+    res.json(userDoc);
   } else {
     res.status(401).json({ error: 'Unauthorized' });
   }
