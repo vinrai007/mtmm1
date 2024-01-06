@@ -118,35 +118,37 @@ app.get('/api/like', async (req, res) => {
 
 
 // Add this to your backend code
-app.post('/join-as-writer', (req, res) => {
-  const { token } = req.cookies;
-  
-  jwt.verify(token, secret, {}, async (err, decodedToken) => {
-    if (err) {
-      return res.status(401).json({ error: 'Unauthorized' });
+app.post('/join-as-writer', async (req, res) => {
+  // Temporarily removing jwt.verify for demonstration purposes
+  // const { token } = req.cookies;
+  // jwt.verify(token, secret, {}, async (err, decodedToken) => {
+  //   if (err) {
+  //     return res.status(401).json({ error: 'Unauthorized' });
+  //   }
+
+  try {
+    // Temporarily hardcoding user ID, replace this with actual user authentication
+    const userId = 'some_user_id';
+
+    // Assuming you have a User model
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    const { id: userId } = decodedToken;
+    // Update the user's writer status
+    user.writer = 1;
+    await user.save();
 
-    try {
-      // Assuming you have a User model
-      const user = await User.findById(userId);
-
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      // Update the user's writer status
-      user.writer = 1;
-      await user.save();
-
-      res.status(200).json({ message: 'Successfully joined as a writer' });
-    } catch (error) {
-      console.error('Error joining as a writer:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
-    }
-  });
+    res.status(200).json({ message: 'Successfully joined as a writer' });
+  } catch (error) {
+    console.error('Error joining as a writer:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+  // });
 });
+
 
 // app.post('/register', async (req, res) => {
 //   const { username, password, writer } = req.body;
