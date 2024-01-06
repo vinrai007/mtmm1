@@ -18,14 +18,14 @@ const front_url = `http://localhost:3000`;
 // const front_url = `https://lustrous-bubblegum-923c1e.netlify.app`;
 const port = process.env.PORT || 4000; // Use the environment variable PORT if available, otherwise default to 4000
 const session = require('express-session');
-const MongoStore = require('connect-mongo')(session);
+// const MongoStore = require('connect-mongo')(session);
 
 app.use(
   session({
     secret: 'asdfe45we45w345wegw345werjktjwertkj',
     resave: false,
     saveUninitialized: false,
-    store: new MongoStore({ mongooseConnection: mongoose.connection }),
+    // store: new MongoStore({ mongooseConnection: mongoose.connection }),
   })
 );
 
