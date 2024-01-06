@@ -131,15 +131,15 @@ app.post('/join-as-writer', async (req, res) => {
     const userId = req.body;
 
     // Assuming you have a User model
-    const user = await User.findById(userId);
+    const { userDoc } = await User.findById(userId);
 
-    if (!user) {
+    if (!userDoc) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     // Update the user's writer status
-    user.writer = 1;
-    await user.save();
+    userDoc.writer = 1;
+    await userDoc.save();
 
     res.status(200).json({ message: 'Successfully joined as a writer' });
   } catch (error) {
