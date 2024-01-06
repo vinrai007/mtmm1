@@ -128,10 +128,10 @@ app.post('/join-as-writer', async (req, res) => {
 
   try {
     // Temporarily hardcoding user ID, replace this with actual user authentication
-    const userId = req.body;
+    const userId = req.body.userId;
 
     // Assuming you have a User model
-    const { userDoc } = await User.findById(userId);
+    const userDoc = await User.findById(userId);
 
     if (!userDoc) {
       return res.status(404).json({ error: 'User not found' });
