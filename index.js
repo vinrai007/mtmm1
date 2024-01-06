@@ -14,8 +14,9 @@ const fs = require('fs');
 const uri = 'mongodb+srv://van:gan@cluster0.5te6pp7.mongodb.net/?retryWrites=true&w=majority';
 const salt = bcrypt.genSaltSync(10);
 const secret = 'asdfe45we45w345wegw345werjktjwertkj';
-const front_url = `http://localhost:3000`;
+// const front_url = `http://localhost:3000`;
 // const front_url = `https://lustrous-bubblegum-923c1e.netlify.app`;
+const front_url = `https://mtm-6emn.onrender.com`;
 const port = process.env.PORT || 4000; // Use the environment variable PORT if available, otherwise default to 4000
 const session = require('express-session');
 // const MongoStore = require('connect-mongo')(session);
